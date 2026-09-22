@@ -241,6 +241,8 @@ def build_meta(md: MarketData, started: datetime) -> dict:
         "loaded": len(md.tickers),
         "failed": failed,
         "oil_available": md.oil_close is not None,
+        "index_source": md.index_source,
+        "warnings": md.warnings,
         "sectors": {k: {"en": s.name_en, "ar": s.name_ar} for k, s in config.SECTORS.items()},
         "params": {
             "index": config.INDEX_TICKER,

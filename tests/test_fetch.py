@@ -56,3 +56,39 @@ def test_only_short_interior_gaps_are_filled():
     assert np.isnan(filled.iloc[14])
     assert int(mask.sum()) == 2
     assert long_gaps == 1
+
+
+def test_calendar_does_not_shrink_to_the_index_history():
+    """Regression: Yahoo once returned a single day of ^TASI.SR history."""
+    idx = _saudi_days(30)
+    cal = build_calendar(idx[-1:], [idx, idx, idx])
+    assert len(cal) == 30
+
+
+def test_unfinished_session_is_detected_only_during_trading_hours():
+    from pipeline.fetch import incomplete_session_date
+
+    tue_morning = pd.Timestamp("2026-09-22 11:28", tz=config.RIYADH_TZ)
+    tue_evening = pd.Timestamp("2026-09-22 16:00", tz=config.RIYADH_TZ)
+    friday = pd.Timestamp("2026-09-25 11:00", tz=config.RIYADH_TZ)
+    assert incomplete_session_date(tue_morning) == pd.Timestamp("2026-09-22")
+    assert incomplete_session_date(tue_evening) is None
+    assert incomplete_session_date(friday) is None
+
+
+def test_short_tasi_history_falls_back_to_an_anchored_proxy():
+    from pipeline.fetch import load_market_data, synthetic_source
+
+    base = synthetic_source()
+
+    def source(ticker):
+        df = base(ticker)
+        return df.iloc[-1:] if ticker == config.INDEX_TICKER else df
+
+    md = load_market_data(source=source, synthetic=True)
+    assert md.index_source == "proxy"
+    assert len(md.calendar) > 1000
+    assert md.warnings
+    real_last = base(config.INDEX_TICKER)["Close"].iloc[-1]
+    assert np.isclose(md.index_close.dropna().iloc[-1], real_last)
+    assert md.index_return_ok.sum() > 1000

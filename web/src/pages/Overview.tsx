@@ -57,18 +57,27 @@ function OverviewBody({ o, m, q, u }: { o: OverviewData; m: Meta; q: Quality; u:
     return [{ id: "brent", color: up ? "up" : "down", data: brent.map(([time, value]) => ({ time, value })) }];
   }, [brent]);
 
+  const proxy = m.index_source === "proxy";
+  const tasiLines = useMemo<ChartLine[]>(() => {
+    const cut = cutoff(lastIso, years);
+    const pts = o.tasi.filter(([d]) => d >= cut);
+    const up = pts.length > 1 && pts[pts.length - 1][1] >= pts[0][1];
+    return [{ id: "tasi", color: up ? "up" : "down", data: pts.map(([time, value]) => ({ time, value })) }];
+  }, [o.tasi, lastIso, years]);
+
   const rangePicker = (
     <Segmented label={t("chart_range")} value={range} onChange={setRange} options={RANGES.map((r) => ({ id: r.id, label: t(r.key) }))} />
   );
-  const lastBar = o.tasi_ohlc[o.tasi_ohlc.length - 1];
-  const prevClose = o.tasi_ohlc.length > 1 ? o.tasi_ohlc[o.tasi_ohlc.length - 2][4] : null;
+  const lastBar = proxy ? undefined : o.tasi_ohlc[o.tasi_ohlc.length - 1];
+  const prevClose = o.tasi.length > 1 ? o.tasi[o.tasi.length - 2][1] : null;
 
   return (
     <div className="space-y-1">
       <PageBar code="HOME" title={t("nav_overview")} right={<span className="num">{t("as_of")} {date(o.stats.date)}</span>} />
 
       <div className="grid grid-cols-1 gap-1 lg:grid-cols-12">
-        <Panel title={t("tasi_long")} meta={rangePicker} className="lg:col-span-8">
+        <Panel title={proxy ? t("tasi_proxy") : t("tasi_long")} meta={rangePicker} className="lg:col-span-8">
+          {proxy && <p className="mb-1 border-s-2 border-yellow ps-2 text-2xs text-yellow">{t("proxy_note")}</p>}
           <QuoteLine
             code="TASI"
             last={o.stats.last}
@@ -84,7 +93,11 @@ function OverviewBody({ o, m, q, u }: { o: OverviewData; m: Meta; q: Quality; u:
               )
             }
           />
-          <TimeSeriesChart candles={candles} height={290} digits={0} label={t("tasi_long")} />
+          {proxy ? (
+            <TimeSeriesChart lines={tasiLines} height={270} digits={0} label={t("tasi_proxy")} />
+          ) : (
+            <TimeSeriesChart candles={candles} height={290} digits={0} label={t("tasi_long")} />
+          )}
         </Panel>
 
         <Panel title={t("p_stats")} pad={false} className="lg:col-span-4">
@@ -151,6 +164,14 @@ function OverviewBody({ o, m, q, u }: { o: OverviewData; m: Meta; q: Quality; u:
                 <StatRow label={t("q_fill")}><Val value={q.summary.days_forward_filled} digits={0} /></StatRow>
               </tbody>
             </table>
+            {m.warnings.length > 0 && (
+              <div className="border-t border-border px-2 py-1 text-2xs">
+                <p className="font-semibold uppercase text-yellow">{t("warnings")}</p>
+                {m.warnings.map((w) => (
+                  <p key={w} className="text-dim" dir="ltr">{w}</p>
+                ))}
+              </div>
+            )}
             <p className="border-t border-border px-2 py-1 text-2xs text-muted">
               {t("source")}{" "}
               <a href="https://www.tradingview.com/lightweight-charts/" target="_blank" rel="noreferrer" className="underline hover:text-amber">

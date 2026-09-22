@@ -51,7 +51,7 @@ fi
 # 2. Commit and push. The token is sent as a one-off header, never saved in .git/config.
 [ -d .git ] || git init -q
 git add -A
-git diff --cached --quiet || git commit -qm "Tadawul Pulse: phase 1 with terminal UI"
+git diff --cached --quiet || git commit -qm "${COMMIT_MSG:-Update Tadawul Pulse}"
 git branch -M main
 REMOTE="https://github.com/$OWNER/$REPO.git"
 if git remote get-url origin >/dev/null 2>&1; then git remote set-url origin "$REMOTE"; else git remote add origin "$REMOTE"; fi

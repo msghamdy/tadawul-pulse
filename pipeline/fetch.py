@@ -79,6 +79,9 @@ class MarketData:
         oil_close: Brent on its own (Mon–Fri) calendar, or None if unavailable.
         reports: Cleaning report per ticker, including failed downloads.
         synthetic: True when the data was generated, not downloaded.
+        index_source: "yahoo" for real TASI data, "proxy" for the equal-weighted
+            stand-in used when Yahoo's TASI history is too short.
+        warnings: Plain-language problems the site should show.
     """
 
     calendar: pd.DatetimeIndex
@@ -93,6 +96,8 @@ class MarketData:
     oil_close: pd.Series | None
     reports: dict[str, CleaningReport]
     synthetic: bool = False
+    index_source: str = "yahoo"  # "yahoo" or "proxy"
+    warnings: list[str] = field(default_factory=list)
 
     @property
     def tickers(self) -> list[str]:
@@ -184,18 +189,26 @@ def _remove_bad_prints(close: pd.Series, threshold: float) -> tuple[pd.Series, l
     return close[~bad.fillna(False)], dates
 
 
-def clean_series(raw: pd.DataFrame, ticker: str, kind: Kind) -> tuple[pd.DataFrame, CleaningReport]:
+def clean_series(
+    raw: pd.DataFrame, ticker: str, kind: Kind, drop_date: pd.Timestamp | None = None
+) -> tuple[pd.DataFrame, CleaningReport]:
     """Clean one ticker's raw bars (before calendar alignment).
 
     Steps: drop non-finite or non-positive closes; for Saudi instruments drop
     rows that fall outside Sun–Thu; for equities drop zero-volume days; remove
     one-day bad prints; flag remaining moves beyond the price limit.
 
+    Args:
+        drop_date: A date whose row should be removed first (an unfinished
+            trading session; see ``incomplete_session_date``).
+
     Returns:
         The cleaned frame (with a boolean ``suspicious`` column) and a report.
     """
     rep = CleaningReport(ticker=ticker, kind=kind, raw_rows=len(raw))
     df = raw.copy()
+    if drop_date is not None and kind != "oil":
+        df = df[df.index != drop_date]
 
     bad = ~np.isfinite(df["Close"].astype(float)) | (df["Close"] <= 0)
     rep.dropped_bad_values = int(bad.sum())
@@ -260,9 +273,10 @@ def fill_short_gaps(s: pd.Series, max_gap: int) -> tuple[pd.Series, pd.Series, i
 def build_calendar(index_dates: pd.DatetimeIndex, equity_dates: list[pd.DatetimeIndex]) -> pd.DatetimeIndex:
     """Build the Saudi trading calendar.
 
-    Uses every TASI date, plus any Sun–Thu date on which at least
-    ``CALENDAR_MIN_COVERAGE`` of the universe has a cleaned observation (covers
-    days where Yahoo is missing the index row).
+    Uses every Sun–Thu date on which at least ``CALENDAR_MIN_COVERAGE`` of the
+    universe has a cleaned observation, plus every TASI date. The calendar
+    starts at the earliest such busy date, so it doesn't depend on how much
+    index history Yahoo returns.
     """
     counts = (
         pd.Series(np.concatenate([np.asarray(d) for d in equity_dates])).value_counts()
@@ -272,8 +286,48 @@ def build_calendar(index_dates: pd.DatetimeIndex, equity_dates: list[pd.Datetime
     busy = counts.index[(counts / n) >= config.CALENDAR_MIN_COVERAGE]
     cal = pd.DatetimeIndex(index_dates).union(pd.DatetimeIndex(busy))
     cal = cal[cal.dayofweek.isin(config.SAUDI_TRADING_WEEKDAYS)]
-    start = pd.Timestamp(index_dates.min()) if len(index_dates) else cal.min()
-    return cal[cal >= start].sort_values()
+    starts = [d for d in (busy.min() if len(busy) else None, pd.DatetimeIndex(index_dates).min() if len(index_dates) else None) if d is not None and not pd.isna(d)]
+    if not starts:
+        return pd.DatetimeIndex([])
+    return cal[cal >= min(starts)].sort_values()
+
+
+def incomplete_session_date(now: pd.Timestamp | None = None) -> pd.Timestamp | None:
+    """Today's date in Riyadh if its session isn't final yet, else None.
+
+    A run before ``SESSION_FINAL_TIME`` on a trading day would otherwise treat
+    the partial session as a closing price.
+    """
+    now = now if now is not None else pd.Timestamp.now(tz=config.RIYADH_TZ)
+    if now.tzinfo is None:
+        now = now.tz_localize(config.RIYADH_TZ)
+    local = now.tz_convert(config.RIYADH_TZ)
+    hh, mm = (int(x) for x in config.SESSION_FINAL_TIME.split(":"))
+    if local.dayofweek in config.SAUDI_TRADING_WEEKDAYS and (local.hour, local.minute) < (hh, mm):
+        return local.normalize().tz_localize(None)
+    return None
+
+
+def equal_weight_proxy(close: pd.DataFrame, return_ok: pd.DataFrame, anchor: float | None) -> tuple[pd.Series, pd.Series]:
+    """Equal-weighted index of the universe, used when TASI history is missing.
+
+    Daily return = mean of usable stock log returns (needs ``PROXY_MIN_STOCKS``).
+    The level is scaled so its last value equals ``anchor`` (the real TASI's
+    latest close) when given, otherwise it ends at 1000.
+
+    Returns:
+        (level series, boolean mask of days with a usable proxy return)
+    """
+    r = np.log(close).diff().where(return_ok)
+    enough = r.notna().sum(axis=1) >= config.PROXY_MIN_STOCKS
+    mean_r = r.mean(axis=1).where(enough)
+    cum = mean_r.fillna(0).cumsum()
+    end = anchor if anchor and np.isfinite(anchor) else 1000.0
+    level = end * np.exp(cum - cum.iloc[-1])
+    first = enough.idxmax() if enough.any() else None
+    if first is not None:
+        level[level.index < first] = np.nan
+    return level, enough
 
 
 def align_to_calendar(
@@ -345,12 +399,16 @@ def load_market_data(use_cache: bool = True, source: RawSource | None = None, sy
             return download_raw(t, use_cache=use_cache)
 
     reports: dict[str, CleaningReport] = {}
+    warnings: list[str] = []
+    drop_date = None if synthetic else incomplete_session_date()
+    if drop_date is not None:
+        log.info("run during trading hours: ignoring the unfinished %s session", drop_date.date())
 
-    # Index (required)
+    # Index. Missing or short history is handled below with a proxy.
     raw_idx = source(config.INDEX_TICKER)
     if raw_idx is None or raw_idx.empty:
-        raise RuntimeError(f"Could not load {config.INDEX_TICKER}; the trading calendar depends on it.")
-    idx_df, idx_rep = clean_series(raw_idx, config.INDEX_TICKER, "index")
+        raw_idx = pd.DataFrame(columns=["Open", "High", "Low", "Close", "Volume"], index=pd.DatetimeIndex([]), dtype=float)
+    idx_df, idx_rep = clean_series(raw_idx, config.INDEX_TICKER, "index", drop_date)
     reports[config.INDEX_TICKER] = idx_rep
 
     # Brent (optional)
@@ -372,7 +430,7 @@ def load_market_data(use_cache: bool = True, source: RawSource | None = None, sy
             if raw is None or raw.empty:
                 reports[stock.ticker] = CleaningReport(stock.ticker, "equity", status="failed", message="download failed")
                 continue
-            df, rep = clean_series(raw, stock.ticker, "equity")
+            df, rep = clean_series(raw, stock.ticker, "equity", drop_date)
             if df.empty:
                 rep.status, rep.message = "failed", "no rows left after cleaning"
                 reports[stock.ticker] = rep
@@ -383,11 +441,10 @@ def load_market_data(use_cache: bool = True, source: RawSource | None = None, sy
             log.exception("unexpected error on %s", stock.ticker)
             reports[stock.ticker] = CleaningReport(stock.ticker, "equity", status="failed", message=str(exc))
 
+    if not cleaned:
+        raise RuntimeError("No stock in the universe could be loaded; check the Yahoo connection.")
     calendar = build_calendar(idx_df.index, [d.index for d in cleaned.values()])
     log.info("calendar: %d Saudi trading days, %s to %s", len(calendar), calendar[0].date(), calendar[-1].date())
-
-    idx_aligned = align_to_calendar(idx_df, calendar, idx_rep)
-    idx_rep.status = "ok"  # history threshold is about stocks, not the index
 
     cols: dict[str, dict[str, pd.Series]] = {}
     for t, df in cleaned.items():
@@ -396,6 +453,30 @@ def load_market_data(use_cache: bool = True, source: RawSource | None = None, sy
     def frame(key: str) -> pd.DataFrame:
         return pd.DataFrame({t: c[key] for t, c in cols.items()}, index=calendar)
 
+    close, return_ok = frame("close"), frame("return_ok").astype(bool)
+
+    # TASI, or an equal-weighted proxy if Yahoo's history is too short.
+    index_source = "yahoo"
+    if len(idx_df):
+        idx_aligned = align_to_calendar(idx_df, calendar, idx_rep)
+        idx_close, idx_ok = idx_aligned["close"], idx_aligned["return_ok"]
+        n_idx = int(idx_aligned["observed"].sum())
+    else:
+        idx_close, idx_ok, n_idx = pd.Series(np.nan, index=calendar), pd.Series(False, index=calendar), 0
+    idx_rep.status = "ok" if n_idx >= config.INDEX_MIN_HISTORY_DAYS else "short_history"
+    index_ohlc = _ohlc(idx_df, calendar) if len(idx_df) else pd.DataFrame(columns=["Open", "High", "Low", "Close"])
+    if n_idx < config.INDEX_MIN_HISTORY_DAYS:
+        anchor = float(idx_df["Close"].iloc[-1]) if len(idx_df) else None
+        idx_close, idx_ok = equal_weight_proxy(close, return_ok, anchor)
+        index_source = "proxy"
+        index_ohlc = pd.DataFrame(columns=["Open", "High", "Low", "Close"])
+        msg = (f"Yahoo returned only {n_idx} day(s) of {config.INDEX_TICKER} history. TASI is shown as an "
+               f"equal-weighted index of the {len(cleaned)} stocks, scaled to end at the latest TASI close, "
+               f"and market betas are measured against it.")
+        idx_rep.message = msg
+        warnings.append(msg)
+        log.warning(msg)
+
     ok = sum(r.status != "failed" for t, r in reports.items() if t in {s.ticker for s in config.UNIVERSE})
     log.info("universe: %d/%d stocks loaded", ok, len(config.UNIVERSE))
     return MarketData(
@@ -403,14 +484,16 @@ def load_market_data(use_cache: bool = True, source: RawSource | None = None, sy
         close=frame("close"),
         volume=frame("volume"),
         observed=frame("observed").astype(bool),
-        return_ok=frame("return_ok").astype(bool),
+        return_ok=return_ok,
         dividends=frame("dividends"),
-        index_close=idx_aligned["close"],
-        index_return_ok=idx_aligned["return_ok"],
-        index_ohlc=_ohlc(idx_df, calendar),
+        index_close=idx_close,
+        index_return_ok=idx_ok,
+        index_ohlc=index_ohlc,
         oil_close=oil_close,
         reports=reports,
         synthetic=synthetic,
+        index_source=index_source,
+        warnings=warnings,
     )
 
 

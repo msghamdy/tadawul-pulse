@@ -12,6 +12,9 @@ export interface Meta {
   loaded: number;
   failed: string[];
   oil_available: boolean;
+  /** "proxy" when Yahoo's TASI history was too short and an equal-weighted index was used */
+  index_source: "yahoo" | "proxy";
+  warnings: string[];
   sectors: Record<string, { en: string; ar: string }>;
   params: {
     index: string;

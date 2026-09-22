@@ -60,6 +60,15 @@ OIL_SUSPICIOUS_MOVE = 0.20     # Brent has no limit; flag anything larger than t
 DROP_ZERO_VOLUME = True
 MAX_FFILL_DAYS = 3             # only gaps of this many trading days or fewer are filled
 MIN_HISTORY_DAYS = 250         # fewer observed days marks a stock as "short_history"
+# Yahoo sometimes returns only a few days of ^TASI.SR history. Below this many
+# observed days, TASI is replaced by an equal-weighted index of the universe
+# (anchored to the real TASI's latest close) and the site labels it as a proxy.
+INDEX_MIN_HISTORY_DAYS = 250
+PROXY_MIN_STOCKS = 10          # proxy needs at least this many usable returns on a day
+# A run during trading hours would store today's unfinished session as if it
+# were a close. Rows dated today are dropped until this Riyadh time.
+SESSION_FINAL_TIME = "15:30"
+RIYADH_TZ = "Asia/Riyadh"
 
 # --------------------------------------------------------------------------- #
 # Oil beta
