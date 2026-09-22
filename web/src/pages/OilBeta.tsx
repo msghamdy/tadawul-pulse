@@ -428,7 +428,7 @@ function BetaTable({
                 <td className="px-2 py-[2px]">
                   <button onClick={() => onSelect(r.ticker)} className="flex items-baseline gap-2 text-start" aria-pressed={isSel} aria-label={`${t("pick")}: ${r.name}`}>
                     <span className="w-9 shrink-0 font-semibold text-yellow num">{r.ticker.replace(".SR", "")}</span>
-                    <span className={isSel ? "text-yellow" : "text-text"}>{r.name}</span>
+                    <span className="text-text">{r.name}</span>
                     {r.shariah && (
                       <span className="text-2xs text-mkt" title={t("shariah_title")}>
                         {t("shariah")}

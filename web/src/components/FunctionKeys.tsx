@@ -34,13 +34,13 @@ export default function FunctionKeys() {
             onClick={() => navigate(p.path)}
             aria-current={active ? "page" : undefined}
             title={t(p.label)}
-            className={`flex shrink-0 items-center gap-1.5 border-e border-border px-2 py-[3px] text-xs sm:flex-1 ${
-              active ? "bg-select text-yellow" : "text-amber hover:bg-hover"
+            className={`flex shrink-0 items-center gap-1.5 border-e border-border px-1.5 py-[3px] text-xs sm:flex-1 ${
+              active ? "bg-select text-text" : "text-text hover:bg-hover"
             }`}
           >
-            <span className={`px-1 text-2xs font-semibold num ${active ? "bg-yellow text-bg" : "bg-amber text-bg"}`}>{p.fkey}</span>
+            <span className="bg-yellow px-1 text-2xs font-bold text-bg num">{p.fkey}</span>
             <span className="font-semibold num">{p.code}</span>
-            <span className={`hidden truncate lg:inline ${p.phase ? "text-muted" : "text-dim"}`}>{t(p.label)}</span>
+            <span className={`hidden truncate lg:inline ${active ? "text-text" : p.phase ? "text-muted" : "text-amber"}`}>{t(p.label)}</span>
           </button>
         );
       })}

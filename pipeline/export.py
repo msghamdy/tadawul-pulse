@@ -14,6 +14,9 @@ Files written to ``config.DATA_DIR`` (``web/public/data``)::
     quality.json                   cleaning report per ticker
     oil_beta.json                  current betas, sector stats, sector series
     oil_beta_series/<ticker>.json  rolling beta history for one stock
+    limits.json                    price-limit study (LIMT page)
+    limits_events.json             every limit event per stock (LIMT single-stock view)
+    tickers.json                   all main-market tickers and names (command bar)
 """
 from __future__ import annotations
 
@@ -32,7 +35,8 @@ import numpy as np
 import pandas as pd
 
 from pipeline import config
-from pipeline.fetch import MarketData, load_market_data, synthetic_source
+from pipeline.fetch import MarketData, RawStore, load_market_data, synthetic_source, yahoo_store
+from pipeline.limits import main_market_universe, run_study
 from pipeline.oil_beta import OilBetaResult, compute_oil_betas, sector_average_series
 
 log = logging.getLogger("pipeline")
@@ -65,6 +69,7 @@ def write_json(path: Path, data: Any) -> None:
     fd, tmp = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
     with os.fdopen(fd, "w", encoding="utf-8") as f:
         json.dump(_clean(data), f, ensure_ascii=False, separators=(",", ":"))
+    os.chmod(tmp, 0o644)  # mkstemp creates owner-only files; the site needs them world-readable
     os.replace(tmp, path)
 
 
@@ -119,7 +124,7 @@ def build_overview(md: MarketData) -> dict:
 
     # Movers and breadth on the last calendar day, only for usable returns.
     last_day = md.calendar[-1]
-    day_r = md.close.pct_change().loc[last_day].where(md.return_ok.loc[last_day]).dropna()
+    day_r = md.close.pct_change(fill_method=None).loc[last_day].where(md.return_ok.loc[last_day]).dropna()
     by_ticker = config.stock_by_ticker()
 
     def mover(t: str) -> dict:
@@ -147,7 +152,7 @@ def build_overview(md: MarketData) -> dict:
 def build_universe(md: MarketData) -> list[dict]:
     """One entry per configured stock, including ones that failed."""
     out = []
-    chg = md.close.pct_change().where(md.return_ok)
+    chg = md.close.pct_change(fill_method=None).where(md.return_ok)
     for s in config.UNIVERSE:
         rep = md.reports.get(s.ticker)
         entry = {"ticker": s.ticker, "name_en": s.name_en, "name_ar": s.name_ar, "sector": s.sector,
@@ -160,6 +165,17 @@ def build_universe(md: MarketData) -> list[dict]:
                               "chg_1d": chg[s.ticker].iloc[-1]})
         out.append(entry)
     return out
+
+
+def build_tickers(md: MarketData) -> list[dict]:
+    """Every main-market ticker with names, for the command bar's autocomplete.
+
+    ``core`` marks the stocks that have oil-beta pages.
+    """
+    uni = main_market_universe()
+    core = set(md.tickers)
+    return [{"ticker": r.ticker, "name_en": r.name_en, "name_ar": r.name_ar or r.name_en, "core": r.ticker in core}
+            for r in uni.itertuples()]
 
 
 def build_quality(md: MarketData) -> dict:
@@ -262,9 +278,18 @@ def build_meta(md: MarketData, started: datetime) -> dict:
 def run(out_dir: Path = config.DATA_DIR, synthetic: bool = False, use_cache: bool = True) -> None:
     """Run the full pipeline and write every JSON file to ``out_dir``."""
     started = datetime.now(timezone.utc)
-    source = synthetic_source() if synthetic else None
-    md = load_market_data(use_cache=use_cache, source=source, synthetic=synthetic)
+    store = RawStore(synthetic_source()) if synthetic else yahoo_store(use_cache)
+    md = load_market_data(synthetic=synthetic, store=store)
     res = compute_oil_betas(md)
+
+    # The limit study downloads ~250 stocks. If it fails, the other pages still
+    # publish and the LIMT page shows the error instead of stale numbers.
+    try:
+        limits = run_study(md, store)
+    except Exception as exc:  # noqa: BLE001
+        log.exception("price-limit study failed")
+        limits = {"error": f"{type(exc).__name__}: {exc}"}
+        md.warnings.append(f"The price-limit study failed: {type(exc).__name__}: {exc}")
 
     series_dir = out_dir / "oil_beta_series"
     if series_dir.exists():
@@ -274,6 +299,11 @@ def run(out_dir: Path = config.DATA_DIR, synthetic: bool = False, use_cache: boo
     write_json(out_dir / "universe.json", build_universe(md))
     write_json(out_dir / "quality.json", build_quality(md))
     write_json(out_dir / "oil_beta.json", build_oil_beta(md, res))
+    events = limits.pop("by_ticker", {})
+    write_json(out_dir / "limits.json", limits)
+    write_json(out_dir / "limits_events.json", {"columns": ["date", "category", "chg", "next1_ab", "next5_ab", "gap"],
+                                                  "tickers": events})
+    write_json(out_dir / "tickers.json", build_tickers(md))
     for t in md.tickers:
         write_json(series_dir / f"{t}.json", build_beta_series(md, res, t))
     write_json(out_dir / "meta.json", build_meta(md, started))  # last, so it marks a complete run

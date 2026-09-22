@@ -117,3 +117,101 @@ export interface BetaSeries {
   dates: string[];
   series: Record<string, { oil: Num[]; mkt: Num[] }>;
 }
+
+export interface TickerInfo {
+  ticker: string;
+  name_en: string;
+  name_ar: string;
+  /** Has an oil-beta page (part of the core research universe). */
+  core: boolean;
+}
+
+// ---- limits.json (price-limit study) ----
+
+export type LimitCategory = "lock_up" | "touch_up" | "near_up" | "lock_down" | "touch_down" | "near_down";
+
+export interface Stat {
+  n: number;
+  dates: number;
+  mean: Num;
+  lo: Num;
+  hi: Num;
+  median: Num;
+  hit: Num;
+  significant: boolean;
+}
+
+export interface Backtest {
+  signal: LimitCategory;
+  hold: number;
+  cost_bps: number;
+  trades: number;
+  skipped_locked_open: number;
+  avg_net: Num;
+  median_net: Num;
+  hit: Num;
+  total: Num;
+  cagr: Num;
+  max_dd: Num;
+  exposure: Num;
+  bench_total: Num;
+  equity: [string, number][];
+  bench: [string, number][];
+}
+
+export interface Continuation {
+  p_next_lock: Num;
+  p_lock_any_day: Num;
+  lock_ratio: Num;
+  streaks: Record<string, number>;
+}
+
+export interface LimitEvent {
+  date: string;
+  ticker: string;
+  category: LimitCategory;
+  chg: number;
+  next1_ab: Num;
+  next5_ab: Num;
+  gap: Num;
+}
+
+export interface Limits {
+  error?: string;
+  as_of: string;
+  period: { start: string | null; end: string };
+  universe: { configured: number; loaded: number; failed: string[] };
+  market: "yahoo" | "proxy";
+  params: {
+    limit: number;
+    near_miss: number;
+    horizons: number[];
+    hold: number;
+    cost_bps: number;
+    listing_exclude: number;
+    bootstrap: number;
+    car_window: [number, number];
+    start: string;
+  };
+  data_checks: { excluded_beyond_limit: number; high_low_repaired: number; stock_days_studied: number; off_grid_fallback: number };
+  counts: Record<LimitCategory, number>;
+  baseline: { by_h: Record<string, { cc_ab: Num; oc: Num }>; gap: Num };
+  stats: Record<LimitCategory, Record<string, { cc_ab: Stat; oc: Stat }> & { gap: Stat }>;
+  car: { k: number[] } & Record<LimitCategory, { mean: Num[]; lo: Num[]; hi: Num[]; n: number[] }>;
+  continuation: { up: Continuation; down: Continuation };
+  breakdown: {
+    liquidity: Record<string, Record<string, Record<"low" | "mid" | "high", Stat>>>;
+    year: Record<string, Record<string, Record<string, Stat>>>;
+  };
+  backtests: Backtest[];
+  today: { date: string; events: { ticker: string; category: LimitCategory; chg: number; close: number; high: number; low: number }[] };
+  log: LimitEvent[];
+  names: Record<string, { en: string; ar: string }>;
+  warnings: string[];
+}
+
+export interface LimitEventsFile {
+  columns: ["date", "category", "chg", "next1_ab", "next5_ab", "gap"];
+  /** [date, category, chg, next1_ab, next5_ab, gap] per event, newest first */
+  tickers: Record<string, [string, LimitCategory, number, Num, Num, Num][]>;
+}

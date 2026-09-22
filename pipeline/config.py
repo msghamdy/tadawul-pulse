@@ -91,6 +91,36 @@ MOVERS_COUNT = 5
 JSON_DECIMALS = 4
 
 # --------------------------------------------------------------------------- #
+# Price-limit study (LIMT page)
+# --------------------------------------------------------------------------- #
+MAIN_MARKET_FILE = ROOT / "pipeline" / "data" / "main_market.csv"
+# The study starts when the 2017 tick-size schedule took effect. The schedule
+# before it isn't clearly documented, and tick sizes decide what counts as a
+# close "at the limit".
+LIMITS_START = "2017-06-04"
+# Tadawul tick sizes (SAR), as (effective_from, [(price_below, tick), ...]).
+# Sources: Argaam, 23 May 2017 (effective 4 Jun 2017); Saudi Exchange
+# announcement reported by EnterpriseAM, 30 Jun 2025 (effective 29 Jun 2025).
+TICK_SCHEDULES: tuple[tuple[str, tuple[tuple[float, float], ...]], ...] = (
+    ("2017-06-04", ((10.0, 0.01), (25.0, 0.02), (50.0, 0.05), (100.0, 0.10), (float("inf"), 0.20))),
+    ("2025-06-29", ((25.0, 0.01), (50.0, 0.02), (100.0, 0.05), (250.0, 0.10), (500.0, 0.20), (float("inf"), 0.50))),
+)
+# A close counts as "at the limit" when it is within one tick of ±PRICE_LIMIT,
+# because limit prices are rounded to the tick grid.
+LIMIT_NEAR_MISS = 0.08         # closes between 8% and the limit, never touching it: the comparison group
+LIMIT_HORIZONS: tuple[int, ...] = (1, 2, 3, 5, 10)
+LIMIT_CAR_WINDOW = (-5, 10)    # days around the event for the average path chart
+LIMIT_LISTING_EXCLUDE_DAYS = 10  # skip a stock's first sessions (wider IPO limits)
+LIMIT_LIQUIDITY_LOOKBACK = 60  # trading days of traded value for the liquidity tiers
+LIMIT_LIQUIDITY_MIN_OBS = 20
+LIMIT_BOOTSTRAP = 2000         # resamples for confidence intervals (resampling dates)
+LIMIT_BOOTSTRAP_SEED = 11
+LIMIT_HOLD_DAYS = 5            # backtest holding period
+LIMIT_COST_BPS = 15            # per side, in basis points  # TODO: set to your broker's commission incl. VAT
+LIMIT_LOG_ROWS = 400           # recent events kept for the event log
+LIMIT_SERIES_STEP = 5          # keep every 5th point of backtest equity curves
+
+# --------------------------------------------------------------------------- #
 # Synthetic demo data (python -m pipeline.export --synthetic)
 # --------------------------------------------------------------------------- #
 SYNTHETIC_START = "2019-01-01"

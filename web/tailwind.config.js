@@ -12,6 +12,7 @@ export default {
         border: v("border"),
         grid: v("grid"),
         titlebar: v("titlebar"),
+        menu: v("menu"),
         hover: v("hover"),
         select: v("select"),
         amber: v("amber"),

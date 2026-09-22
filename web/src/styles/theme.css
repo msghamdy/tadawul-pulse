@@ -1,39 +1,43 @@
 /* =========================================================================
    Tadawul Pulse theme: the only place colours are defined.
+   A classic trading-terminal palette: orange-amber text on pure black, white
+   values, teal-green / red changes, blue selection, grey title strips and
+   yellow function keys. Inspired by financial terminals in general; no
+   vendor branding is used anywhere.
    Tailwind (tailwind.config.js) and the chart code (src/lib/colors.ts) both
-   read these variables, so changing a value here restyles the whole site,
-   including canvas charts.
-   Values are "R G B" triplets so Tailwind can apply opacity (e.g. bg-up/20).
+   read these variables. Values are "R G B" triplets so Tailwind can apply
+   opacity (e.g. bg-up/20).
    ========================================================================= */
 :root {
   /* Surfaces */
-  --c-bg: 0 0 0;              /* #000000 page and panel background */
-  --c-border: 51 51 51;       /* #333333 panel borders and table rules */
-  --c-grid: 31 31 31;         /* #1F1F1F chart gridlines */
-  --c-titlebar: 10 42 92;     /* #0A2A5C panel title bars */
-  --c-hover: 20 20 20;        /* #141414 row hover */
-  --c-select: 30 30 12;       /* #1E1E0C selected row */
+  --c-bg: 0 0 0;              /* #000000 screen */
+  --c-border: 44 44 44;       /* #2C2C2C panel rules */
+  --c-grid: 28 28 28;         /* #1C1C1C chart gridlines */
+  --c-titlebar: 26 26 26;     /* #1A1A1A panel title strips */
+  --c-menu: 51 51 51;         /* #333333 numbered menu buttons */
+  --c-hover: 22 22 22;        /* #161616 row hover */
+  --c-select: 0 104 255;      /* #0068FF selected row / active item */
 
   /* Text */
-  --c-amber: 255 160 40;      /* #FFA028 primary text, axis labels */
-  --c-text: 255 255 255;      /* #FFFFFF secondary text, values */
-  --c-dim: 200 200 200;       /* #C8C8C8 light grey secondary text */
-  --c-muted: 128 128 128;     /* #808080 captions, disabled */
-  --c-yellow: 255 215 0;      /* #FFD700 highlighted values and headers */
+  --c-amber: 251 139 30;      /* #FB8B1E labels, axis text, primary accent */
+  --c-text: 255 255 255;      /* #FFFFFF values */
+  --c-dim: 190 190 190;       /* #BEBEBE secondary text */
+  --c-muted: 118 118 118;     /* #767676 captions, disabled */
+  --c-yellow: 255 221 0;      /* #FFDD00 security keys, headline values, function keys */
 
   /* Prices and returns */
-  --c-up: 0 200 83;           /* #00C853 */
-  --c-down: 255 61 0;         /* #FF3D00 */
+  --c-up: 74 246 195;         /* #4AF6C3 */
+  --c-down: 255 67 61;        /* #FF433D */
   --c-flat: 255 255 255;      /* #FFFFFF unchanged */
 
   /* Analysis series */
-  --c-oil: 255 160 40;        /* oil beta: amber */
-  --c-mkt: 79 195 247;        /* market beta: terminal cyan #4FC3F7 */
+  --c-oil: 251 139 30;        /* oil beta: amber */
+  --c-mkt: 77 163 255;        /* market beta: terminal blue #4DA3FF */
 
   /* Sector palette (scatter, bars, table markers) */
-  --s-energy: 255 160 40;
+  --s-energy: 251 139 30;
   --s-materials: 255 112 67;
-  --s-banks: 79 195 247;
+  --s-banks: 77 163 255;
   --s-financials: 129 212 250;
   --s-insurance: 149 117 205;
   --s-telecom: 186 104 200;

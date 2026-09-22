@@ -3,6 +3,7 @@ import Layout from "./components/Layout";
 import Overview from "./pages/Overview";
 import OilBeta from "./pages/OilBeta";
 import Pending from "./pages/Pending";
+import Limits from "./pages/Limits";
 
 // HashRouter: GitHub Pages has no server-side rewrites, so /#/oil-beta survives a refresh.
 export default function App() {
@@ -16,6 +17,8 @@ export default function App() {
           <Route path="factors" element={<Pending code="FACT" />} />
           <Route path="seasonality" element={<Pending code="SEAS" />} />
           <Route path="pairs" element={<Pending code="PAIR" />} />
+          <Route path="limits" element={<Limits />} />
+          <Route path="limits/:ticker" element={<Limits />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

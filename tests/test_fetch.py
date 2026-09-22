@@ -92,3 +92,19 @@ def test_short_tasi_history_falls_back_to_an_anchored_proxy():
     real_last = base(config.INDEX_TICKER)["Close"].iloc[-1]
     assert np.isclose(md.index_close.dropna().iloc[-1], real_last)
     assert md.index_return_ok.sum() > 1000
+
+
+def test_to_adjusted_matches_yfinance_auto_adjust():
+    """Our dividend adjustment must equal what yfinance's auto_adjust would return."""
+    from yfinance import utils as yfu
+
+    from pipeline.fetch import to_adjusted
+
+    idx = _saudi_days(4)
+    raw = pd.DataFrame({"Open": [10.0, 10.2, 10.1, 9.9], "High": [10.3, 10.4, 10.2, 10.0],
+                        "Low": [9.9, 10.0, 9.8, 9.7], "Close": [10.1, 10.3, 10.0, 9.8],
+                        "Adj Close": [9.8, 10.0, 9.9, 9.8], "Volume": [1e5] * 4}, index=idx)
+    ours = to_adjusted(raw)
+    theirs = yfu.auto_adjust(raw)
+    for col in ("Open", "High", "Low", "Close"):
+        assert np.allclose(ours[col].to_numpy(), theirs[col].to_numpy())

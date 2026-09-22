@@ -110,7 +110,7 @@ class MarketData:
 # --------------------------------------------------------------------------- #
 def _cache_path(ticker: str):
     safe = ticker.replace("^", "_").replace("=", "_").replace("/", "_")
-    return config.CACHE_DIR / f"{safe}.csv"
+    return config.CACHE_DIR / f"{safe}.raw.csv"  # ".raw": unadjusted OHLC plus "Adj Close"
 
 
 def _normalize_yahoo(df: pd.DataFrame) -> pd.DataFrame:
@@ -122,14 +122,19 @@ def _normalize_yahoo(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
     df.index = idx.normalize()
     df.index.name = "date"
-    keep = [c for c in ("Open", "High", "Low", "Close", "Volume", "Dividends") if c in df.columns]
+    keep = [c for c in ("Open", "High", "Low", "Close", "Adj Close", "Volume", "Dividends") if c in df.columns]
     df = df[keep]
     df = df[~df.index.duplicated(keep="last")].sort_index()
     return df
 
 
 def download_raw(ticker: str, start: str = config.START_DATE, use_cache: bool = True) -> pd.DataFrame | None:
-    """Download daily adjusted bars for one ticker.
+    """Download daily bars for one ticker, as traded (not dividend-adjusted).
+
+    Open/High/Low/Close are the prices that actually printed, adjusted by
+    Yahoo only for splits and bonus shares. "Adj Close" additionally adjusts
+    for dividends. The price-limit study needs the former (Tadawul sets limits
+    from yesterday's actual close); return statistics use ``to_adjusted``.
 
     Args:
         ticker: Yahoo ticker, e.g. ``"2222.SR"``.
@@ -150,7 +155,7 @@ def download_raw(ticker: str, start: str = config.START_DATE, use_cache: bool = 
 
     for attempt in range(1, config.DOWNLOAD_RETRIES + 1):
         try:
-            df = yf.Ticker(ticker).history(start=start, auto_adjust=True, actions=True)
+            df = yf.Ticker(ticker).history(start=start, auto_adjust=False, actions=True)
             if df is None or df.empty or "Close" not in df.columns:
                 raise ValueError("empty response")
             df = _normalize_yahoo(df)
@@ -163,6 +168,44 @@ def download_raw(ticker: str, start: str = config.START_DATE, use_cache: bool = 
             time.sleep(config.RETRY_BACKOFF_SECONDS * attempt)
     log.error("giving up on %s", ticker)
     return None
+
+
+def to_adjusted(raw: pd.DataFrame) -> pd.DataFrame:
+    """Dividend-adjust a raw frame the same way yfinance's auto_adjust does.
+
+    Every OHLC price is multiplied by Adj Close / Close for that day, and the
+    "Adj Close" column is dropped. Frames without "Adj Close" are returned as is.
+    """
+    if raw is None or "Adj Close" not in raw.columns:
+        return raw
+    df = raw.copy()
+    factor = (df["Adj Close"] / df["Close"]).where(df["Close"] > 0)
+    for c in ("Open", "High", "Low", "Close"):
+        if c in df.columns:
+            df[c] = df[c] * factor
+    return df.drop(columns=["Adj Close"])
+
+
+class RawStore:
+    """Fetches each ticker once per run and hands the same raw frame to every module."""
+
+    def __init__(self, source: RawSource):
+        self._source = source
+        self._frames: dict[str, pd.DataFrame | None] = {}
+
+    def get(self, ticker: str) -> pd.DataFrame | None:
+        if ticker not in self._frames:
+            try:
+                self._frames[ticker] = self._source(ticker)
+            except Exception as exc:  # noqa: BLE001 - one ticker must never break the run
+                log.error("source failed for %s: %s", ticker, exc)
+                self._frames[ticker] = None
+        return self._frames[ticker]
+
+
+def yahoo_store(use_cache: bool = True) -> RawStore:
+    """RawStore backed by Yahoo Finance downloads."""
+    return RawStore(lambda t: download_raw(t, use_cache=use_cache))
 
 
 # --------------------------------------------------------------------------- #
@@ -182,7 +225,7 @@ def _remove_bad_prints(close: pd.Series, threshold: float) -> tuple[pd.Series, l
     legitimate limit move followed by trading, but it is exactly what a stray
     bad tick on Yahoo looks like.
     """
-    r = close.pct_change()
+    r = close.pct_change(fill_method=None)
     r_next = r.shift(-1)
     bad = (r.abs() > threshold) & (r_next.abs() > threshold) & (np.sign(r) != np.sign(r_next))
     dates = list(close.index[bad.fillna(False).to_numpy()])
@@ -229,7 +272,7 @@ def clean_series(
     rep.bad_prints_removed = len(bad_dates)
     df = df.loc[kept_close.index].copy()
 
-    r = df["Close"].pct_change()
+    r = df["Close"].pct_change(fill_method=None)
     suspicious = r.abs() > threshold
     df["suspicious"] = suspicious.fillna(False)
     rep.suspicious_moves = [
@@ -381,22 +424,31 @@ def _ohlc(df: pd.DataFrame, calendar: pd.DatetimeIndex) -> pd.DataFrame:
 # --------------------------------------------------------------------------- #
 # Orchestration
 # --------------------------------------------------------------------------- #
-def load_market_data(use_cache: bool = True, source: RawSource | None = None, synthetic: bool = False) -> MarketData:
+def load_market_data(
+    use_cache: bool = True,
+    source: RawSource | None = None,
+    synthetic: bool = False,
+    store: RawStore | None = None,
+) -> MarketData:
     """Download (or generate), clean and align everything.
 
     Args:
         use_cache: Pass through to ``download_raw``.
         source: Optional function ticker -> raw frame; defaults to Yahoo.
         synthetic: Only used to label the result.
+        store: A shared RawStore (takes precedence over ``source``), so other
+            modules can reuse the same downloads.
 
     Raises:
         RuntimeError: if the TASI index can't be loaded, since the calendar and
             market betas depend on it. Individual stocks and Brent may fail
             without stopping the run.
     """
-    if source is None:
-        def source(t: str) -> pd.DataFrame | None:  # noqa: E306
-            return download_raw(t, use_cache=use_cache)
+    if store is None:
+        store = RawStore(source) if source is not None else yahoo_store(use_cache)
+
+    def source(t: str) -> pd.DataFrame | None:  # noqa: E306 - returns dividend-adjusted bars
+        return to_adjusted(store.get(t))
 
     reports: dict[str, CleaningReport] = {}
     warnings: list[str] = []
@@ -506,12 +558,33 @@ _SECTOR_OIL_LOADING = {
 }
 
 
+def _tick_for(price: float, date: pd.Timestamp) -> float:
+    """Tadawul tick size for one price on one date (scalar version for synthetic data)."""
+    bands = config.TICK_SCHEDULES[0][1]
+    for start, b in config.TICK_SCHEDULES:
+        if date >= pd.Timestamp(start):
+            bands = b
+    for upper, tick in bands:
+        if price < upper:
+            return tick
+    return bands[-1][1]
+
+
+def _on_grid(x: float, date: pd.Timestamp, how: str) -> float:
+    t = _tick_for(x, date)
+    f = {"floor": np.floor, "ceil": np.ceil, "round": np.round}[how]
+    return float(f(x / t + (1e-9 if how == "floor" else -1e-9 if how == "ceil" else 0)) * t)
+
+
 def synthetic_source(seed: int = config.SYNTHETIC_SEED) -> RawSource:
     """Return a ``source`` function that generates realistic-looking raw data.
 
     Brent is generated on a Mon–Fri calendar and stocks on Sun–Thu, with
-    sector-dependent oil and market loadings. A few zero-volume days, a bad
-    print and a limit move are injected so the cleaning step has work to do.
+    sector-dependent oil and market loadings. Stock prices move on the tick
+    grid and respect the ±10% limit, with occasional jumps so there are limit
+    locks and touches. A few zero-volume days, a bad print and an unadjusted
+    corporate action are injected so the cleaning step has work to do.
+    Covers the core universe and every main-market ticker in MAIN_MARKET_FILE.
     """
     rng = np.random.default_rng(seed)
     days = pd.date_range(config.SYNTHETIC_START, pd.Timestamp.today().normalize(), freq="D")
@@ -520,43 +593,79 @@ def synthetic_source(seed: int = config.SYNTHETIC_SEED) -> RawSource:
 
     oil_r = pd.Series(rng.normal(0.0002, 0.022, len(oil_days)), index=oil_days)
     oil_px = 70 * np.exp(oil_r.cumsum())
-    # Brent move as seen from each Saudi date (as-of alignment)
     oil_on_sa = np.log(oil_px.reindex(oil_px.index.union(sa_days)).ffill().reindex(sa_days)).diff().fillna(0)
     mkt_r = 0.35 * oil_on_sa + pd.Series(rng.normal(0.0002, 0.009, len(sa_days)), index=sa_days)
 
-    frames: dict[str, pd.DataFrame] = {}
-
-    def bars(r: pd.Series, start_px: float, vol_scale: float) -> pd.DataFrame:
+    def smooth_bars(r: pd.Series, start_px: float, vol_scale: float) -> pd.DataFrame:
         close = start_px * np.exp(r.cumsum())
         opn = close.shift(1).fillna(close.iloc[0]) * np.exp(rng.normal(0, 0.002, len(r)))
         wick = np.abs(rng.normal(0, 0.004, len(r)))
-        high = np.maximum(opn, close) * (1 + wick)
-        low = np.minimum(opn, close) * (1 - wick)
-        vol = rng.lognormal(13, 0.5, len(r)) * vol_scale
-        return pd.DataFrame({"Open": opn, "High": high, "Low": low, "Close": close, "Volume": vol,
-                             "Dividends": 0.0}, index=r.index)
+        return pd.DataFrame({"Open": opn, "High": np.maximum(opn, close) * (1 + wick),
+                             "Low": np.minimum(opn, close) * (1 - wick), "Close": close,
+                             "Volume": rng.lognormal(13, 0.5, len(r)) * vol_scale, "Dividends": 0.0}, index=r.index)
 
-    frames[config.INDEX_TICKER] = bars(mkt_r, 10000, 1.0)
-    frames[config.OIL_TICKER] = bars(oil_r, 70, 0.1)
+    def limit_bars(r: np.ndarray, dates: pd.DatetimeIndex, start_px: float, jump_p: float) -> pd.DataFrame:
+        """Prices on the tick grid of their band, capped at the exact daily limit prices."""
+        n = len(r)
+        o, h, l, c = (np.empty(n) for _ in range(4))
+        prev = _on_grid(start_px, dates[0], "round")
+        for i in range(n):
+            d = dates[i]
+            up = _on_grid(prev * (1 + config.PRICE_LIMIT), d, "floor")
+            dn = _on_grid(prev * (1 - config.PRICE_LIMIT), d, "ceil")
+            ri = r[i]
+            if rng.random() < jump_p:
+                ri += rng.choice([-1, 1]) * rng.uniform(0.07, 0.16)
+            close = min(max(_on_grid(prev * (1 + ri), d, "round"), dn), up)
+            open_ = min(max(_on_grid(prev * (1 + rng.normal(0, 0.004)), d, "round"), dn), up)
+            hi = max(open_, close) * (1 + abs(rng.normal(0, 0.006)))
+            lo = min(open_, close) * (1 - abs(rng.normal(0, 0.006)))
+            if rng.random() < jump_p * 0.6:  # an intraday touch of the limit that doesn't hold
+                if rng.random() < 0.5:
+                    hi = up
+                else:
+                    lo = dn
+            h[i] = max(min(_on_grid(hi, d, "round"), up), open_, close)
+            l[i] = min(max(_on_grid(lo, d, "round"), dn), open_, close)
+            o[i], c[i] = open_, close
+            prev = close
+        return pd.DataFrame({"Open": o, "High": h, "Low": l, "Close": c})
 
-    for i, s in enumerate(config.UNIVERSE):
-        b_oil = _SECTOR_OIL_LOADING.get(s.sector, 0.05) + rng.normal(0, 0.1)
+    frames: dict[str, pd.DataFrame] = {}
+    frames[config.INDEX_TICKER] = smooth_bars(mkt_r, 10000, 1.0)
+    frames[config.OIL_TICKER] = smooth_bars(oil_r, 70, 0.1)
+
+    core = config.stock_by_ticker()
+    try:
+        extra = pd.read_csv(config.MAIN_MARKET_FILE, comment="#", dtype=str)["ticker"].tolist()
+    except FileNotFoundError:
+        extra = []
+    tickers = list(core) + [t for t in extra if t not in core]
+
+    for i, t in enumerate(tickers):
+        sector = core[t].sector if t in core else ""
+        small = t not in core
+        b_oil = _SECTOR_OIL_LOADING.get(sector, 0.05) + rng.normal(0, 0.1)
         b_mkt = rng.uniform(0.6, 1.3)
-        idio = rng.normal(0, rng.uniform(0.010, 0.020), len(sa_days))
-        r = b_mkt * (mkt_r - 0.35 * oil_on_sa) + b_oil * oil_on_sa + idio
-        r = r.clip(-0.095, 0.095)
-        df = bars(pd.Series(r, index=sa_days), rng.uniform(10, 150), 1.0)
-        # listing date variety, zero-volume days, one bad print, one limit move
+        idio = rng.normal(0, rng.uniform(0.012, 0.028) if small else rng.uniform(0.010, 0.020), len(sa_days))
+        r = np.expm1(b_mkt * (mkt_r - 0.35 * oil_on_sa) + b_oil * oil_on_sa + idio).to_numpy()
+        df = limit_bars(r, sa_days, rng.uniform(5, 150), 0.006 if small else 0.002)
+        df.index = sa_days
+        df["Volume"] = rng.lognormal(12 if small else 13, 0.6, len(df))
+        df["Dividends"] = 0.0
+        df["Adj Close"] = df["Close"]
         df = df.iloc[int(rng.integers(0, 400)):]
         zero = rng.choice(len(df), size=5, replace=False)
         df.iloc[zero, df.columns.get_loc("Volume")] = 0
         if i % 7 == 0:
             j = len(df) // 2
             df.iloc[j, df.columns.get_loc("Close")] *= 1.6
+            df.iloc[j, df.columns.get_loc("Adj Close")] *= 1.6
         if i % 11 == 0:
             j = len(df) // 3
-            df.iloc[j:, df.columns.get_loc("Close")] *= 0.8  # an unadjusted corporate action
-        frames[s.ticker] = df
+            for col in ("Open", "High", "Low", "Close", "Adj Close"):
+                df.iloc[j:, df.columns.get_loc(col)] *= 0.8  # an unadjusted corporate action
+        frames[t] = df
 
     def source(ticker: str) -> pd.DataFrame | None:
         return frames.get(ticker)

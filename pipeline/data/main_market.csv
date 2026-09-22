@@ -1,0 +1,258 @@
+# Tadawul Main Market operating companies (codes 1xxx-8xxx).
+# Source: stockanalysis.com/list/saudi-stock-exchange, retrieved 2026-09-22.
+# Excluded: Nomu parallel market (9xxx, different price limits) and REIT funds (4330-4349).
+# Survivorship: this is today's list; delisted companies are not included.
+ticker,name_en
+2222.SR,Saudi Arabian Oil Company
+1120.SR,Al Rajhi Banking and Investment Corporation
+1211.SR,Saudi Arabian Mining Company (Maaden)
+1180.SR,The Saudi National Bank
+7010.SR,Saudi Telecom Company
+2010.SR,Saudi Basic Industries Corporation
+2082.SR,ACWA Power Company
+1010.SR,Riyad Bank
+4013.SR,Dr. Sulaiman Al Habib Medical Services Group Company
+1150.SR,Alinma Bank
+1060.SR,Saudi Awwal Bank
+5110.SR,Saudi Energy Company
+2020.SR,SABIC Agri-Nutrients Company
+1050.SR,Banque Saudi Fransi
+7020.SR,Etihad Etisalat Company
+4280.SR,Kingdom Holding Company
+7203.SR,Elm Company
+2280.SR,Almarai Company
+1080.SR,Arab National Bank
+2380.SR,Rabigh Refining and Petrochemical Company
+1140.SR,Bank Albilad
+4030.SR,The National Shipping Company of Saudi Arabia
+7202.SR,Arabian Internet and Communication Services Company
+4325.SR,Umm Al Qura for Development and Construction Company
+8210.SR,Bupa Arabia for Cooperative Insurance Company
+2223.SR,Saudi Aramco Base Oil Company - Luberef
+6015.SR,Americana Restaurants International PLC
+8010.SR,The Company for Cooperative Insurance
+4300.SR,Dar Al Arkan Real Estate Development Company
+4250.SR,Jabal Omar Development Company
+4190.SR,Jarir Marketing Company
+2382.SR,ADES Holding Company
+1030.SR,The Saudi Investment Bank
+2290.SR,Yanbu National Petrochemical Company
+1303.SR,Electrical Industries Company
+4142.SR,Riyadh Cables Group Company
+4100.SR,Makkah Construction and Development Company
+1020.SR,aljazira bank
+1111.SR,Saudi Tadawul Group Holding Company
+4263.SR,SAL Saudi Logistics Services Company
+4002.SR,Mouwasat Medical Services Company
+4200.SR,Aldrees Petroleum and Transport Services Company
+4164.SR,Nahdi Medical Company
+8313.SR,Rasan Information Technology Company
+8230.SR,Al Rajhi Company for Cooperative Insurance
+2083.SR,Power and Water Utility Company for Jubail and Yanbu
+1212.SR,Astra Industrial Group Company
+4004.SR,Dallah Healthcare Company
+4015.SR,Jamjoom Pharmaceuticals Factory Company
+4090.SR,Taiba Investment Company
+7200.SR,Al Moammar Information Systems Company
+7030.SR,Mobile Telecommunications Company Saudi Arabia
+2310.SR,Sahara International Petrochemical Company
+4017.SR,Dr. Soliman Abdel Kader Fakeeh Hospital Company
+4220.SR,Emaar The Economic City
+2381.SR,Arabian Drilling Company
+2250.SR,Saudi Industrial Investment Group
+2050.SR,Savola Group Company
+2350.SR,Saudi Kayan Petrochemical Company
+4321.SR,Arabian Centres Company
+4264.SR,Flynas Company
+1322.SR,Al Masane Al Kobra Mining Company
+1321.SR,East Pipes Integrated Company for Industry
+2270.SR,Saudia Dairy & Foodstuff Company
+4310.SR,Knowledge Economic City Company
+2230.SR,Saudi Chemical Holding Company
+4072.SR,MBC Group
+4291.SR,National Company for Learning and Education
+2060.SR,National Industrialization Company
+4020.SR,Saudi Real Estate Company
+2330.SR,Advanced Petrochemical Company
+6004.SR,CATRION Catering Holding Company
+1810.SR,Seera Holding Group
+4005.SR,National Medical Care Company
+4161.SR,BinDawood Holding Company
+4018.SR,Almoosa Health Company
+4084.SR,Derayah Financial Company
+3040.SR,Qassim Cement Company
+4003.SR,United Electronics Company
+8200.SR,Saudi Reinsurance Company
+4210.SR,Saudi Research and Media Group
+2080.SR,National Gas and Industrialization Company
+4322.SR,Retal Urban Development Company
+3020.SR,YAMAMA Cement Company
+3030.SR,Saudi Cement Company
+1830.SR,Leejam Sports Company
+4001.SR,Abdullah Al-Othaim Markets Company
+4031.SR,Saudi Ground Services Company
+4019.SR,Specialized Medical Company
+6010.SR,The National Agricultural Development Company
+2070.SR,Saudi Pharmaceutical Industries and Medical Appliances Corporation
+4150.SR,Arriyadh Development Co.
+2320.SR,Al-Babtain Power and Telecommunications Company
+4007.SR,Al Hammadi Holding Company
+4162.SR,Almunajem Foods Company
+2081.SR,Alkhorayef Water and Power Technologies Company
+4163.SR,Al-Dawaa Medical Services Company
+4260.SR,United International Transportation Company
+2190.SR,Sustained Infrastructure Holding Company
+4050.SR,Saudi Automotive Services Company
+4165.SR,Al Majed for Oud Company
+4071.SR,Arabian Contracting Services Company
+7040.SR,Etihad GO Telecom Co.
+2283.SR,The First Milling Company
+1320.SR,Saudi Steel Pipes Company
+4009.SR,Middle East Healthcare Company
+3092.SR,Riyadh Cement Company
+4146.SR,Gas Arabian Services Company
+3050.SR,Southern Province Cement Company
+6019.SR,Almasar Alshamil Education Company JSC
+1831.SR,Maharah for Human Resources Company
+6017.SR,Jahez International Company for Information Systems Technology
+2040.SR,Saudi Ceramic Company
+3060.SR,Yanbu Cement Company
+2300.SR,Saudi Paper Manufacturing Company
+8030.SR,The Mediterranean and Gulf Cooperative Insurance and Reinsurance Company
+4016.SR,Middle East Pharmaceutical Industries Company
+1834.SR,Saudi Manpower Solutions Company
+4327.SR,Al Ramz Real Estate Company
+2284.SR,Modern Mills Company
+4192.SR,Al-Saif Stores for Development & Investment Company
+1302.SR,Bawan Company
+2286.SR,Fourth Milling Company
+6022.SR,Armah Sports Company
+4083.SR,United International Holding Company
+3010.SR,Arabian Cement Company
+3080.SR,Eastern Province Cement Company
+2285.SR,Arabian Mills for Food Products Company
+7204.SR,Perfect Presentation for Commercial Services Company
+1833.SR,Almawarid Manpower Company
+2170.SR,Alujain Corporation
+4326.SR,Dar Al Majed Real Estate Company
+4240.SR,AFG International Company
+1304.SR,Al Yamamah Steel Industries Company
+4292.SR,Ataa Educational Company
+8250.SR,Gulf Insurance Group
+2084.SR,Miahona Company Limited
+2240.SR,Advanced Building Industries Co.
+7211.SR,Saudi Azm for Communication and Information Technology Company
+1202.SR,Middle East Company for Manufacturing and Producing Paper
+8060.SR,Walaa Cooperative Insurance Company
+1183.SR,SHL Finance Company
+4262.SR,Lumi Rental Company
+3003.SR,City Cement Company
+4040.SR,Saudi Public Transport Company
+2370.SR,Middle East Specialized Cables Company
+2200.SR,Arabian Pipes Company
+4012.SR,Thob Al Aseel Company
+4143.SR,Al Taiseer Group TALCO Industrial Company
+4193.SR,Nice One Beauty Digital Marketing Company
+4261.SR,Theeb Rent A Car Company
+4320.SR,Alandalus Property Company
+4323.SR,Sumou Real Estate Company
+2110.SR,Saudi Cable Company
+1835.SR,Tamkeen Human Resources Company
+2150.SR,The National Company for Glass Industries
+1820.SR,BAAN Holding Group Company
+3004.SR,Northern Region Cement Company
+2282.SR,Naqi Water Company
+4081.SR,Nayifat Finance Company
+2281.SR,Tanmiah Food Company
+4110.SR,Batic Investments and Logistics Company
+6070.SR,Al-Jouf Agricultural Development Co.
+4230.SR,Red Sea International Company
+6001.SR,Halwani Bros. Co. Ltd.
+1323.SR,United Carton Industries Company
+6014.SR,Alamar Foods Company
+4080.SR,Sinad Holding Company
+4144.SR,Raoom trading Company
+8070.SR,Arabian Shield Cooperative Insurance Company
+6018.SR,Sport Clubs Company
+6002.SR,Herfy Food Services Company
+4328.SR,Ladun Investment Company
+3002.SR,Najran Cement Company
+2140.SR,Ayyan Investment Company
+2120.SR,Saudi Advanced Industries Company
+2340.SR,Artex Industrial Investment Company
+1182.SR,Amlak International Finance Company
+2030.SR,Saudi Arabian Refineries Company
+4290.SR,Al Khaleej Training and Education Company
+4145.SR,Al Obeikan Glass Company
+1324.SR,Saleh Abdulaziz Al Rashed & Sons Co.
+7205.SR,Dar AlBalad for Business Solutions Company
+4014.SR,Scientific and Medical Equipment House Company
+4191.SR,Abdullah Saad Mohammed Abo Moati for Bookstores Company
+4170.SR,Tourism Enterprise Company (Shams)
+4148.SR,Alwasail Industrial Company
+1214.SR,Al Hassan Ghazi Ibrahim Shaker Company
+8040.SR,Mutakamela Insurance Company
+8240.SR,Chubb Arabia Cooperative Insurance Company
+8012.SR,Aljazira Takaful Taawuni Company
+4265.SR,Cherry Trading Company
+1210.SR,Basic Chemical Industries Company
+8120.SR,Gulf Union Alahlia Cooperative Insurance Company
+4324.SR,Banan Real Estate Company
+3090.SR,Tabuk Cement Company
+2288.SR,Nofoth Food Products Company
+4008.SR,Saudi Company for Hardware SACO
+4147.SR,Consolidated Grunenfelder Saady Holding Company
+4082.SR,Morabaha Marina Financing Company
+4180.SR,Fitaihi Holding Group
+4194.SR,Marketing Home Group Company for Trading Company
+2287.SR,Arabian Company for Agricultural and Industrial Investment
+3005.SR,Umm Al-Qura Cement Company
+8300.SR,Wataniya Insurance Company
+3007.SR,Zahrat Al Waha For Trading Company
+4011.SR,L'azurde Company for Jewelry
+2160.SR,The Saudi Arabian Amiantit Company
+4051.SR,Baazeem Trading Company
+8280.SR,Liva Insurance Company
+3091.SR,Al Jouf Cement Company
+2100.SR,Wafrah for Industry and Development Company
+4006.SR,Saudi Marketing Company
+8020.SR,Malath Cooperative Insurance Company
+2130.SR,Saudi Industrial Development Co.
+4270.SR,Saudi Printing and Packaging Co.
+1301.SR,United Wire Factories Company
+4130.SR,Darb Saudi Investment Company
+2210.SR,Nama Chemicals Company
+4140.SR,Saudi Industrial Export Company
+4070.SR,"Tihama for Advertising, Public Relations and Marketing Company"
+6050.SR,Saudi Fisheries Company
+8160.SR,Arabia Insurance Cooperative Company
+1832.SR,Sadr Logistics Company
+2001.SR,Methanol Chemicals Company
+4021.SR,Canadian General Medical Center Complex Company
+6060.SR,Ash-Sharqiyah Development Co.
+2090.SR,National Gypsum Company
+2180.SR,Filling and Packing Materials Manufacturing Company
+6090.SR,Jazan Development and Investment Company
+4061.SR,Anaam International Holding Group Company
+2220.SR,National Metal Manufacturing and Casting Co.
+6016.SR,Shatirah House Restaurant Co.
+7201.SR,Arab Sea Information Systems Company
+8170.SR,Al-Etihad Cooperative Insurance Company
+6020.SR,Al Gassim Investment Holding Company
+6040.SR,Tabuk Agricultural Development Company
+8180.SR,Al Sagr Cooperative Insurance Company
+1201.SR,Takween Advanced Industries
+8100.SR,Saudi Arabian Cooperative Insurance Company
+8310.SR,Amana Cooperative Insurance Company
+2360.SR,Saudi Vitrified Clay Pipe Company
+6013.SR,Development Works Food Company
+3008.SR,Al Kathiri Holding Company
+4141.SR,Al-Omran Industrial Trading Company
+8050.SR,Salama Cooperative Insurance Company
+4160.SR,Thimar Development Holding Company
+8311.SR,Saudi Enaya Cooperative Insurance Company
+8150.SR,Allied Cooperative Insurance Group
+1213.SR,Naseej International Trading Company
+8190.SR,United Cooperative Assurance Company
+6012.SR,Raydan Food Company
+8260.SR,Gulf General Cooperative Insurance Company
