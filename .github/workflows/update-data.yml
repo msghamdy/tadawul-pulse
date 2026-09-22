@@ -1,0 +1,49 @@
+name: Update data
+
+# Runs after the Tadawul close, Sunday–Thursday. 12:30 UTC = 15:30 Riyadh.
+# GitHub may start scheduled jobs several minutes late, and Yahoo can take a
+# while to publish the day's bars, so the latest day is occasionally missing
+# until the next run.
+on:
+  schedule:
+    - cron: "30 12 * * 0-4"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: python -m pytest -q
+
+      - name: Build data files
+        run: python -m pipeline.export
+
+      # The JSON is kept as a workflow artifact rather than committed, so the
+      # repository history doesn't grow with every daily run. deploy.yml
+      # downloads the most recent one before building the site.
+      - name: Upload data
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-data
+          path: web/public/data
+          retention-days: 30
+          if-no-files-found: error

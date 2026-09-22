@@ -1,0 +1,53 @@
+/* =========================================================================
+   Tadawul Pulse theme: the only place colours are defined.
+   Tailwind (tailwind.config.js) and the chart code (src/lib/colors.ts) both
+   read these variables, so changing a value here restyles the whole site,
+   including canvas charts.
+   Values are "R G B" triplets so Tailwind can apply opacity (e.g. bg-up/20).
+   ========================================================================= */
+:root {
+  /* Surfaces */
+  --c-bg: 0 0 0;              /* #000000 page and panel background */
+  --c-border: 51 51 51;       /* #333333 panel borders and table rules */
+  --c-grid: 31 31 31;         /* #1F1F1F chart gridlines */
+  --c-titlebar: 10 42 92;     /* #0A2A5C panel title bars */
+  --c-hover: 20 20 20;        /* #141414 row hover */
+  --c-select: 30 30 12;       /* #1E1E0C selected row */
+
+  /* Text */
+  --c-amber: 255 160 40;      /* #FFA028 primary text, axis labels */
+  --c-text: 255 255 255;      /* #FFFFFF secondary text, values */
+  --c-dim: 200 200 200;       /* #C8C8C8 light grey secondary text */
+  --c-muted: 128 128 128;     /* #808080 captions, disabled */
+  --c-yellow: 255 215 0;      /* #FFD700 highlighted values and headers */
+
+  /* Prices and returns */
+  --c-up: 0 200 83;           /* #00C853 */
+  --c-down: 255 61 0;         /* #FF3D00 */
+  --c-flat: 255 255 255;      /* #FFFFFF unchanged */
+
+  /* Analysis series */
+  --c-oil: 255 160 40;        /* oil beta: amber */
+  --c-mkt: 79 195 247;        /* market beta: terminal cyan #4FC3F7 */
+
+  /* Sector palette (scatter, bars, table markers) */
+  --s-energy: 255 160 40;
+  --s-materials: 255 112 67;
+  --s-banks: 79 195 247;
+  --s-financials: 129 212 250;
+  --s-insurance: 149 117 205;
+  --s-telecom: 186 104 200;
+  --s-software: 240 98 146;
+  --s-utilities: 38 198 218;
+  --s-healthcare: 102 187 106;
+  --s-pharma: 174 213 129;
+  --s-food: 255 213 79;
+  --s-staples_retail: 220 231 117;
+  --s-discretionary_retail: 255 138 101;
+  --s-real_estate: 188 170 164;
+  --s-capital_goods: 144 164 174;
+  --s-transport: 77 182 172;
+  --s-default: 158 158 158;
+
+  color-scheme: dark;
+}

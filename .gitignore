@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+.cache/
+web/node_modules/
+web/dist/
+web/public/data/*
+!web/public/data/.gitkeep
+.DS_Store

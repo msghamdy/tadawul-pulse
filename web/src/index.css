@@ -1,0 +1,53 @@
+@import "./styles/theme.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  -webkit-text-size-adjust: 100%;
+  font-size: 12.5px;
+}
+body {
+  @apply bg-bg text-amber font-mono antialiased;
+  line-height: 1.35;
+}
+/* Arabic glyphs aren't in IBM Plex Mono; put the Arabic face first in RTL
+   so letters join correctly, while digits still come out monospaced. */
+html[dir="rtl"] body {
+  font-family: "IBM Plex Sans Arabic", "IBM Plex Mono", ui-monospace, monospace;
+}
+.num {
+  font-family: "IBM Plex Mono", "JetBrains Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+*, *::before, *::after {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+:focus-visible {
+  outline: 1px solid rgb(var(--c-yellow));
+  outline-offset: 1px;
+}
+::selection { background: rgb(var(--c-amber)); color: rgb(var(--c-bg)); }
+
+/* Scrollbars in keeping with the terminal */
+* { scrollbar-width: thin; scrollbar-color: rgb(var(--c-border)) rgb(var(--c-bg)); }
+
+/* Blinking block cursor in the command bar */
+@keyframes blink { 50% { opacity: 0; } }
+.cursor-blink { animation: blink 1s steps(1) infinite; }
+
+/* Value-change flash in tables */
+@keyframes flash-up { from { background: rgb(var(--c-up) / 0.45); } to { background: transparent; } }
+@keyframes flash-down { from { background: rgb(var(--c-down) / 0.45); } to { background: transparent; } }
+.flash-up { animation: flash-up 0.7s ease-out; }
+.flash-down { animation: flash-down 0.7s ease-out; }
+
+/* Ticker tape */
+@keyframes tape { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.tape-track { animation: tape var(--tape-duration, 120s) linear infinite; }
+.tape:hover .tape-track { animation-play-state: paused; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cursor-blink, .tape-track, .flash-up, .flash-down { animation: none !important; }
+}
